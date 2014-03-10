@@ -14,7 +14,7 @@ namespace kOS.Suffixed
 
         public virtual object GetSuffix(String suffixName)
         {
-            return null;
+            return SpecialResult.SuffixNotFound;
         }
 
         public virtual object TryOperation(string op, object other, bool reverseOrder)
@@ -31,5 +31,11 @@ namespace kOS.Suffixed
 
             return value;
         }
+    }
+
+    public enum SpecialResult
+    {
+        SuffixNotFound = 1,
+        VoidResult = 2
     }
 }

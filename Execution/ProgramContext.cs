@@ -74,7 +74,7 @@ namespace kOS.Execution
             }
         }
 
-        public void DisableActiveFlyByWire(BindingManager manager)
+        private void DisableActiveFlyByWire(BindingManager manager)
         {
             foreach (KeyValuePair<string, bool> kvp in _flyByWire)
             {
@@ -85,5 +85,10 @@ namespace kOS.Execution
             }
         }
 
+        public void OnContextPop(SharedObjects shared)
+        {
+            DisableActiveFlyByWire(shared.BindingMgr);
+            // TODO: remove threads belonging to this context
+        }
     }
 }

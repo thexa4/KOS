@@ -125,13 +125,20 @@ namespace kOS.Compilation
             if (specialValue is SpecialValue)
             {
                 object value = ((SpecialValue)specialValue).GetSuffix(suffixName);
-                if (value != null)
+                if (!(value is SpecialResult))
                 {
                     cpu.PushStack(value);
                 }
                 else
                 {
-                    throw new Exception(string.Format("Suffix {0} not found on object", suffixName));
+                    switch ((SpecialResult)value)
+                    {
+                        case SpecialResult.SuffixNotFound:
+                            throw new Exception(string.Format("Suffix {0} not found on object", suffixName));
+                        case SpecialResult.VoidResult:
+                            // do nothing
+                            break;
+                    }
                 }
             }
             else

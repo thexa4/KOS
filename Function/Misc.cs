@@ -78,20 +78,20 @@ namespace kOS.Function
                     {
                         if (shared.ScriptHandler != null)
                         {
-                            Stopwatch compileWatch = null;
-                            bool showStatistics = Config.GetInstance().ShowStatistics;
-                            if (showStatistics) compileWatch = Stopwatch.StartNew();
+                            //Stopwatch compileWatch = null;
+                            //bool showStatistics = Config.GetInstance().ShowStatistics;
+                            //if (showStatistics) compileWatch = Stopwatch.StartNew();
 
                             List<CodePart> parts = shared.ScriptHandler.Compile(file.Content);
                             ProgramBuilder builder = new ProgramBuilder();
                             builder.AddRange(parts);
                             List<Opcode> program = builder.BuildProgram(false);
 
-                            if (showStatistics)
-                            {
-                                compileWatch.Stop();
-                                shared.Cpu.TotalCompileTime += compileWatch.ElapsedMilliseconds;
-                            }
+                            //if (showStatistics)
+                            //{
+                            //    compileWatch.Stop();
+                            //    shared.Cpu.TotalCompileTime += compileWatch.ElapsedMilliseconds;
+                            //}
 
                             if (volumeId != null)
                             {

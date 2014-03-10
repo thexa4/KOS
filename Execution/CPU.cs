@@ -12,36 +12,20 @@ namespace kOS.Execution
 {
     public class CPU: IUpdateObserver
     {
-        private enum Status
-        {
-            Running = 1,
-            Waiting = 2
-        }
-
         private Stack _stack;
         private Dictionary<string, Variable> _vars;
-        private Status _currentStatus;
         private double _currentTime;
-        private double _timeWaitUntil;
         private Dictionary<string, FunctionBase> _functions;
         private SharedObjects _shared;
-        private List<ProgramContext> _contexts;
-        private ProgramContext _currentContext;
+        private ThreadManager _threadManager;
+        private kThread _currentThread;
+        private kThread _interpreterThread;
         
-        // statistics
-        public double TotalCompileTime = 0D;
-        private double _totalUpdateTime = 0D;
-        private double _totalTriggersTime = 0D;
-        private double _totalExecutionTime = 0D;
-
         public int InstructionPointer
         {
-            get { return _currentContext.InstructionPointer; }
-            set { _currentContext.InstructionPointer = value; }
+            get { return _currentThread.Context.InstructionPointer; }
+            set { _currentThread.Context.InstructionPointer = value; }
         }
-
-        public double SessionTime { get { return _currentTime; } }
-
 
         public CPU(SharedObjects shared)
         {
@@ -49,7 +33,6 @@ namespace kOS.Execution
             _shared.Cpu = this;
             _stack = new Stack();
             _vars = new Dictionary<string, Variable>();
-            _contexts = new List<ProgramContext>();
             if (_shared.UpdateHandler != null) _shared.UpdateHandler.AddObserver(this);
             Boot();
         }
@@ -77,13 +60,6 @@ namespace kOS.Execution
 
         public void Boot()
         {
-            // break all running programs
-            _currentContext = null;
-            _contexts.Clear();
-            PushInterpreterContext();
-            _currentStatus = Status.Running;
-            _currentTime = 0;
-            _timeWaitUntil = 0;
             // clear stack
             _stack.Clear();
             // clear variables
@@ -94,6 +70,10 @@ namespace kOS.Execution
             LoadFunctions();
             // load bindings
             if (_shared.BindingMgr != null) _shared.BindingMgr.LoadBindings();
+            // start a new thread manager
+            _threadManager = new ThreadManager(_shared);
+            // start a new thread for the interpreter
+            StartInterpreterThread();
             // Booting message
             if (_shared.Screen != null)
             {
@@ -105,55 +85,11 @@ namespace kOS.Execution
             }
         }
 
-        private void PushInterpreterContext()
+        private void StartInterpreterThread()
         {
-            ProgramBuilder builder = new ProgramBuilder();
-            List<Opcode> emptyProgram = builder.BuildProgram(true);
-            PushContext(new ProgramContext(emptyProgram));
-        }
-
-        private void PushContext(ProgramContext context)
-        {
-            _contexts.Add(context);
-            _currentContext = _contexts[_contexts.Count - 1];
-
-            if (_contexts.Count > 1)
-            {
-                _shared.Interpreter.SetInputLock(true);
-            }
-        }
-
-        private void PopContext()
-        {
-            if (_contexts.Count > 0)
-            {
-                // remove the last context
-                ProgramContext contextRemove = _contexts[_contexts.Count - 1];
-                _contexts.Remove(contextRemove);
-                contextRemove.DisableActiveFlyByWire(_shared.BindingMgr);
-
-                if (_contexts.Count > 0)
-                {
-                    _currentContext = _contexts[_contexts.Count - 1];
-                }
-                else
-                {
-                    _currentContext = null;
-                }
-
-                if (_contexts.Count == 1)
-                {
-                    _shared.Interpreter.SetInputLock(false);
-                }
-            }
-        }
-
-        private void PopFirstContext()
-        {
-            while (_contexts.Count > 1)
-            {
-                PopContext();
-            }
+            _interpreterThread = _threadManager.CreateThread();
+            _interpreterThread.Start();
+            _currentThread = _interpreterThread;
         }
 
         public void RunProgram(List<Opcode> program)
@@ -163,49 +99,54 @@ namespace kOS.Execution
 
         public void RunProgram(List<Opcode> program, bool silent)
         {
-            if (program.Count > 0)
+            // if the current thread belongs to the interpreter
+            // then start a new one for the program
+            if (_currentThread == _interpreterThread)
             {
-                ProgramContext newContext = new ProgramContext(program);
-                newContext.Silent = silent;
-                PushContext(newContext);
+                // stop the interpreter thread while a program is running
+                _interpreterThread.Stop();
+                // start a new thread for the program
+                kThread programThread = _threadManager.CreateThread();
+                programThread.RunProgram(program, silent);
+                programThread.Start();
+            }
+            else
+            {
+                _currentThread.RunProgram(program, silent);
             }
         }
 
         public void UpdateProgram(List<Opcode> program)
         {
-            if (program.Count > 0)
-            {
-                if (_currentContext != null && _currentContext.Program != null)
-                {
-                    _currentContext.UpdateProgram(program);
-                }
-                else
-                {
-                    RunProgram(program);
-                }
-            }
+            _currentThread.UpdateProgram(program);
         }
 
         public void BreakExecution(bool manual)
         {
-            if (_contexts.Count > 1)
+            if (_currentThread != _interpreterThread)
             {
                 EndWait();
 
                 if (manual)
                 {
-                    PopFirstContext();
+                    _threadManager.Remove(_currentThread);
+                    _interpreterThread.Start();
                     _shared.Screen.Print("Program aborted.");
-                    PrintStatistics();
                 }
                 else
                 {
-                    bool silent = _currentContext.Silent;
-                    PopContext();
-                    if (_contexts.Count == 1 && !silent)
+                    bool silent = _currentThread.Context.Silent;
+                    _currentThread.BreakExecution();
+
+                    if (!_currentThread.HasProgramRunning())
                     {
-                        _shared.Screen.Print("Program ended.");
-                        PrintStatistics();
+                        _threadManager.Remove(_currentThread);
+                        _interpreterThread.Start();
+                        
+                        if (!silent)
+                        {
+                            _shared.Screen.Print("Program ended.");
+                        }
                     }
                 }
             }
@@ -340,17 +281,19 @@ namespace kOS.Execution
 
         public void AddTrigger(int triggerFunctionPointer)
         {
-            if (!_currentContext.Triggers.Contains(triggerFunctionPointer))
+            ProgramContext context = _currentThread.Context;
+            if (!context.Triggers.Contains(triggerFunctionPointer))
             {
-                _currentContext.Triggers.Add(triggerFunctionPointer);
+                context.Triggers.Add(triggerFunctionPointer);
             }
         }
 
         public void RemoveTrigger(int triggerFunctionPointer)
         {
-            if (_currentContext.Triggers.Contains(triggerFunctionPointer))
+            ProgramContext context = _currentThread.Context;
+            if (context.Triggers.Contains(triggerFunctionPointer))
             {
-                _currentContext.Triggers.Remove(triggerFunctionPointer);
+                context.Triggers.Remove(triggerFunctionPointer);
             }
         }
 
@@ -358,55 +301,42 @@ namespace kOS.Execution
         {
             if (waitTime > 0)
             {
-                _timeWaitUntil = _currentTime + waitTime;
+                _currentThread.TimeWaitUntil = _currentTime + waitTime;
             }
-            _currentStatus = Status.Waiting;
+            _currentThread.Status = ProgramStatus.Waiting;
         }
 
         public void EndWait()
         {
-            _timeWaitUntil = 0;
-            _currentStatus = Status.Running;
+            _currentThread.TimeWaitUntil = 0;
+            _currentThread.Status = ProgramStatus.Running;
         }
 
         public void Update(double deltaTime)
         {
-            bool showStatistics = Config.GetInstance().ShowStatistics;
-            Stopwatch updateWatch = null;
-            Stopwatch triggerWatch = null;
-            Stopwatch executionWatch = null;
-
-            if (showStatistics) updateWatch = Stopwatch.StartNew();
-
             _currentTime = _shared.UpdateHandler.CurrentTime;
 
             try
             {
                 PreUpdateBindings();
 
-                if (_currentContext != null && _currentContext.Program != null)
+                foreach (kThread thread in _threadManager.Threads)
                 {
-                    if (showStatistics) triggerWatch = Stopwatch.StartNew();
-                    ProcessTriggers();
-                    if (showStatistics)
+                    if (thread.Enabled && thread.Context != null)
                     {
-                        triggerWatch.Stop();
-                        _totalTriggersTime += triggerWatch.ElapsedMilliseconds;
-                    }
+                        _currentThread = thread;
 
-                    ProcessWait();
+                        ProcessTriggers();
+                        ProcessWait();
 
-                    if (_currentStatus == Status.Running)
-                    {
-                        if (showStatistics) executionWatch = Stopwatch.StartNew();
-                        ContinueExecution();
-                        if (showStatistics)
+                        if (thread.Status == ProgramStatus.Running)
                         {
-                            executionWatch.Stop();
-                            _totalExecutionTime += executionWatch.ElapsedMilliseconds;
+                            ContinueExecution();
                         }
                     }
                 }
+
+                _currentThread = _threadManager.FindLastForegroundThread();
 
                 PostUpdateBindings();
             }
@@ -414,25 +344,19 @@ namespace kOS.Execution
             {
                 if (_shared.Logger != null)
                 {
-                    _shared.Logger.Log(e, _currentContext.InstructionPointer);
+                    _shared.Logger.Log(e, _currentThread.Context.InstructionPointer);
                 }
 
-                if (_contexts.Count == 1)
+                if (_currentThread == _interpreterThread)
                 {
-                    // interpreter context
                     SkipCurrentInstructionId();
                 }
                 else
                 {
-                    // break execution of all programs and pop interpreter context
-                    PopFirstContext();
+                    // break execution of all programs in the current thread and restart interpreter thread
+                    _threadManager.Remove(_currentThread);
+                    _interpreterThread.Start();
                 }
-            }
-
-            if (showStatistics)
-            {
-                updateWatch.Stop();
-                _totalUpdateTime += updateWatch.ElapsedMilliseconds;
             }
         }
 
@@ -454,9 +378,9 @@ namespace kOS.Execution
 
         private void ProcessWait()
         {
-            if (_currentStatus == Status.Waiting && _timeWaitUntil > 0)
+            if (_currentThread.Status == ProgramStatus.Waiting && _currentThread.TimeWaitUntil > 0)
             {
-                if (_currentTime >= _timeWaitUntil)
+                if (_currentTime >= _currentThread.TimeWaitUntil)
                 {
                     EndWait();
                 }
@@ -465,23 +389,24 @@ namespace kOS.Execution
 
         private void ProcessTriggers()
         {
-            if (_currentContext.Triggers.Count > 0)
+            ProgramContext context = _currentThread.Context;
+            if (context.Triggers.Count > 0)
             {
-                int currentInstructionPointer = _currentContext.InstructionPointer;
-                List<int> triggerList = new List<int>(_currentContext.Triggers);
+                int currentInstructionPointer = context.InstructionPointer;
+                List<int> triggerList = new List<int>(context.Triggers);
 
                 foreach (int triggerPointer in triggerList)
                 {
-                    _currentContext.InstructionPointer = triggerPointer;
+                    context.InstructionPointer = triggerPointer;
 
                     bool executeNext = true;
                     while (executeNext)
                     {
-                        executeNext = ExecuteInstruction(_currentContext);
+                        executeNext = ExecuteInstruction(context);
                     }
                 }
 
-                _currentContext.InstructionPointer = currentInstructionPointer;
+                context.InstructionPointer = currentInstructionPointer;
             }
         }
 
@@ -491,12 +416,12 @@ namespace kOS.Execution
             bool executeNext = true;
             int instructionsPerUpdate = Config.GetInstance().InstructionsPerUpdate;
             
-            while (_currentStatus == Status.Running && 
+            while (_currentThread.Status == ProgramStatus.Running && 
                    instructionCounter < instructionsPerUpdate &&
                    executeNext &&
-                   _currentContext != null)
+                   _currentThread.Context != null)
             {
-                executeNext = ExecuteInstruction(_currentContext);
+                executeNext = ExecuteInstruction(_currentThread.Context);
                 instructionCounter++;
             }
         }
@@ -522,12 +447,16 @@ namespace kOS.Execution
 
         private void SkipCurrentInstructionId()
         {
-            int currentInstructionId = _currentContext.Program[_currentContext.InstructionPointer].InstructionId;
-
-            while (_currentContext.InstructionPointer < _currentContext.Program.Count &&
-                   _currentContext.Program[_currentContext.InstructionPointer].InstructionId == currentInstructionId)
+            if (_currentThread == _interpreterThread)
             {
-                _currentContext.InstructionPointer++;
+                ProgramContext context = _interpreterThread.Context;
+                int currentInstructionId = context.Program[context.InstructionPointer].InstructionId;
+
+                while (context.InstructionPointer < context.Program.Count &&
+                       context.Program[context.InstructionPointer].InstructionId == currentInstructionId)
+                {
+                    context.InstructionPointer++;
+                }
             }
         }
 
@@ -549,25 +478,13 @@ namespace kOS.Execution
             if (_shared.BindingMgr != null)
             {
                 _shared.BindingMgr.ToggleFlyByWire(paramName, enabled);
-                _currentContext.ToggleFlyByWire(paramName, enabled);
+                _currentThread.Context.ToggleFlyByWire(paramName, enabled);
             }
         }
 
-        public void PrintStatistics()
+        public kThread CreateThread(string programName, object[] parameters)
         {
-            if (Config.GetInstance().ShowStatistics)
-            {
-                _shared.Screen.Print(string.Format("Total compile time: {0:F3}ms", TotalCompileTime));
-                _shared.Screen.Print(string.Format("Total update time: {0:F3}ms", _totalUpdateTime));
-                _shared.Screen.Print(string.Format("Total triggers time: {0:F3}ms", _totalTriggersTime));
-                _shared.Screen.Print(string.Format("Total execution time: {0:F3}ms", _totalExecutionTime));
-                _shared.Screen.Print(" ");
-
-                TotalCompileTime = 0D;
-                _totalUpdateTime = 0D;
-                _totalTriggersTime = 0D;
-                _totalExecutionTime = 0D;
-            }
+            return _threadManager.CreateThread(_currentThread, programName, parameters);
         }
 
         public void OnSave(ConfigNode node)

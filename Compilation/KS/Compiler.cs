@@ -595,6 +595,14 @@ namespace kOS.Compilation.KS
                 VisitNode(node.Nodes[2]);
             }
 
+            // for the thread function we also push the parameter count
+            if (functionName == "thread")
+            {
+                // the -1 is because we are not counting the first parameter
+                // that is the program's name
+                AddOpcode(new OpcodePush(parameterCount - 1));
+            }
+
             string overloadedFunctionName = GetFunctionOverload(functionName, parameterCount) + "()";
             AddOpcode(new OpcodeCall(overloadedFunctionName));
         }

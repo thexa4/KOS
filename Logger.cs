@@ -25,19 +25,19 @@ namespace kOS
                 _shared.Screen.Print(text);
             }
 
-            UnityEngine.Debug.Log(text);
+            //UnityEngine.Debug.Log(text);
         }
 
         public void Log(Exception e)
         {
             Log(e.Message);
-            UnityEngine.Debug.Log(e);
+            //UnityEngine.Debug.Log(e);
         }
 
         public void Log(Exception e, int instructionPointer)
         {
             Log(string.Format("{0}\nInstruction {1}", e.Message, instructionPointer));
-            UnityEngine.Debug.Log(e);
+            //UnityEngine.Debug.Log(e);
         }
     }
 }

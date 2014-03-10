@@ -147,4 +147,26 @@ namespace kOS.Function
             shared.Cpu.PushStack(constants);
         }
     }
+
+    [FunctionAttribute("thread")]
+    public class FunctionThread : FunctionBase
+    {
+        public override void Execute(SharedObjects shared)
+        {
+            int parameterCount = GetInt(shared.Cpu.PopValue());
+            object[] parameters = new object[parameterCount];
+
+            // get all the program's parameters
+            for (int index = (parameterCount - 1); index >= 0; index--)
+            {
+                parameters[index] = shared.Cpu.PopValue();
+            }
+            // get the program's name
+            string programName = shared.Cpu.PopValue().ToString();
+            // create the new thread
+            var newThread = shared.Cpu.CreateThread(programName, parameters);
+            // push it into the stack
+            shared.Cpu.PushStack(newThread);
+        }
+    }
 }

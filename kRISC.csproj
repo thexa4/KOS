@@ -67,6 +67,8 @@
     <Compile Include="Binding\BoundVariable.cs" />
     <Compile Include="Binding\KOSBinding.cs" />
     <Compile Include="AddOns\RemoteTech2\RemoteTechFactory.cs" />
+    <Compile Include="Execution\ContextManager.cs" />
+    <Compile Include="Execution\ThreadManager.cs" />
     <Compile Include="Factories\IFactory.cs" />
     <Compile Include="Factories\StandardFactory.cs" />
     <Compile Include="Function\FunctionAttribute.cs" />
@@ -118,6 +120,7 @@
     <Compile Include="Suffixed\Part\SensorValue.cs" />
     <Compile Include="Suffixed\ResourceValue.cs" />
     <Compile Include="Suffixed\StageValues.cs" />
+    <Compile Include="Execution\kThread.cs" />
     <Compile Include="UpdateHandler.cs" />
     <Compile Include="Utilities\Flushable.cs" />
     <Compile Include="Utilities\SteeringHelper.cs" />
