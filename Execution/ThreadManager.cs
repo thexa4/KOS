@@ -38,6 +38,8 @@ namespace kOS.Execution
             {
                 // remove the thread
                 _threads.Remove(thread);
+                // notify the thread that is being removed so it can cleanup
+                thread.OnRemove();
                 // recursively remove all its child threads
                 foreach (kThread child in thread.ChildThreads)
                 {

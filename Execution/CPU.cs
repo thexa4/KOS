@@ -12,7 +12,6 @@ namespace kOS.Execution
 {
     public class CPU: IUpdateObserver
     {
-        private Stack _stack;
         private Dictionary<string, Variable> _vars;
         private double _currentTime;
         private Dictionary<string, FunctionBase> _functions;
@@ -31,7 +30,6 @@ namespace kOS.Execution
         {
             _shared = shared;
             _shared.Cpu = this;
-            _stack = new Stack();
             _vars = new Dictionary<string, Variable>();
             if (_shared.UpdateHandler != null) _shared.UpdateHandler.AddObserver(this);
             Boot();
@@ -60,8 +58,6 @@ namespace kOS.Execution
 
         public void Boot()
         {
-            // clear stack
-            _stack.Clear();
             // clear variables
             _vars.Clear();
             // clear interpreter
@@ -105,6 +101,7 @@ namespace kOS.Execution
             {
                 // stop the interpreter thread while a program is running
                 _interpreterThread.Stop();
+                _shared.Interpreter.SetInputLock(true);
                 // start a new thread for the program
                 kThread programThread = _threadManager.CreateThread();
                 programThread.RunProgram(program, silent);
@@ -131,6 +128,7 @@ namespace kOS.Execution
                 {
                     _threadManager.Remove(_currentThread);
                     _interpreterThread.Start();
+                    _shared.Interpreter.SetInputLock(false);
                     _shared.Screen.Print("Program aborted.");
                 }
                 else
@@ -142,6 +140,7 @@ namespace kOS.Execution
                     {
                         _threadManager.Remove(_currentThread);
                         _interpreterThread.Start();
+                        _shared.Interpreter.SetInputLock(false);
                         
                         if (!silent)
                         {
@@ -154,17 +153,17 @@ namespace kOS.Execution
 
         public void PushStack(object item)
         {
-            _stack.Push(item);
+            _currentThread.PushStack(item);
         }
 
         public object PopStack()
         {
-            return _stack.Pop();
+            return _currentThread.PopStack();
         }
 
         public void MoveStackPointer(int delta)
         {
-            _stack.MoveStackPointer(delta);
+            _currentThread.MoveStackPointer(delta);
         }
 
         private Variable GetOrCreateVariable(string identifier)

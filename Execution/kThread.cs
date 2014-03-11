@@ -19,6 +19,7 @@ namespace kOS.Execution
     {
         private SharedObjects _shared;
         private ContextManager _contextManager;
+        private Stack _stack;
         private ProgramFile _file = null;
         private bool _programStarted;
         private object[] _parameters;
@@ -35,19 +36,17 @@ namespace kOS.Execution
         {
             _shared = shared;
             _contextManager = new ContextManager(_shared);
+            _stack = new Stack();
             Status = ProgramStatus.NotStarted;
             ChildThreads = new List<kThread>();
         }
 
         public kThread(SharedObjects shared, string programName, object[] parameters)
+            : this(shared)
         {
-            _shared = shared;
-            _contextManager = new ContextManager(_shared);
             ProgramName = programName;
             _parameters = parameters;
-            Status = ProgramStatus.NotStarted;
             RunsInBackground = true;
-            ChildThreads = new List<kThread>();
             LoadFile();
         }
 
@@ -99,10 +98,10 @@ namespace kOS.Execution
 
             if (program.Count > 0)
             {
-                // push the program's arguments
+                // push the program's arguments in this thread stack
                 foreach (object parameter in _parameters)
                 {
-                    _shared.Cpu.PushStack(parameter);
+                    PushStack(parameter);
                 }
                 
                 RunProgram(program, false);
@@ -144,6 +143,26 @@ namespace kOS.Execution
         public bool HasProgramRunning()
         {
             return (_contextManager.Count > 0);
+        }
+
+        public void OnRemove()
+        {
+            _contextManager.PopContext();
+        }
+
+        public void PushStack(object item)
+        {
+            _stack.Push(item);
+        }
+
+        public object PopStack()
+        {
+            return _stack.Pop();
+        }
+
+        public void MoveStackPointer(int delta)
+        {
+            _stack.MoveStackPointer(delta);
         }
     }
 }
