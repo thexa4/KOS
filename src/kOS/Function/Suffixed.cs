@@ -150,6 +150,8 @@ namespace kOS.Function
             AssertArgBottomAndConsume(shared);
             var result = new BodyTarget(bodyName, shared);
             ReturnValue = result;
+            if (result.Body == null)
+                ReturnValue = null;
         }
     }
 

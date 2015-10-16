@@ -15,7 +15,7 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\Debug\</OutputPath>
+    <OutputPath>F:\Games\SteamLibrary\SteamApps\common\Kerbal Space Program\GameData\kOS\Plugins\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
@@ -30,10 +30,13 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Assembly-CSharp">
-      <HintPath>..\..\Resources\Assembly-CSharp.dll</HintPath>
+      <HintPath>F:\Games\SteamLibrary\SteamApps\common\Kerbal Space Program\KSP_Data\Managed\Assembly-CSharp.dll</HintPath>
     </Reference>
     <Reference Include="ICSharpCode.SharpZipLib">
-      <HintPath>..\..\Resources\ICSharpCode.SharpZipLib.dll</HintPath>
+      <HintPath>..\packages\SharpZipLib.0.86.0\lib\20\ICSharpCode.SharpZipLib.dll</HintPath>
+    </Reference>
+    <Reference Include="KSPAPIExtensions">
+      <HintPath>F:\Games\SteamLibrary\SteamApps\common\Kerbal Space Program\GameData\kOS\Plugins\KSPAPIExtensions.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -42,10 +45,10 @@
     <Reference Include="System.Data" />
     <Reference Include="System.Xml" />
     <Reference Include="UnityEngine">
-      <HintPath>..\..\Resources\UnityEngine.dll</HintPath>
+      <HintPath>F:\Games\SteamLibrary\SteamApps\common\Kerbal Space Program\KSP_Data\Managed\UnityEngine.dll</HintPath>
     </Reference>
-    <Reference Include="KSPAPIExtensions">
-      <HintPath>..\..\Resources\KSPAPIExtensions.dll</HintPath>
+    <Reference Include="UnityEngine.UI">
+      <HintPath>F:\Games\SteamLibrary\SteamApps\common\Kerbal Space Program\KSP_Data\Managed\UnityEngine.UI.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -55,6 +58,16 @@
     <Compile Include="AddOns\InfernalRobotics\IRHandler.cs" />
     <Compile Include="AddOns\InfernalRobotics\IRServoWrapper.cs" />
     <Compile Include="AddOns\InfernalRobotics\IRWrapper.cs" />
+    <Compile Include="AddOns\MechJeb2\Addon.cs" />
+    <Compile Include="AddOns\MechJeb2\IDrivable.cs" />
+    <Compile Include="AddOns\MechJeb2\MechJebAscentModule.cs" />
+    <Compile Include="AddOns\MechJeb2\MechJebHook.cs" />
+    <Compile Include="AddOns\MechJeb2\MechJebLandingModule.cs" />
+    <Compile Include="AddOns\MechJeb2\MechJebManeuverPlannerModule.cs" />
+    <Compile Include="AddOns\MechJeb2\MechJebNodeExecutorModule.cs" />
+    <Compile Include="AddOns\MechJeb2\MechJebTargetModule.cs" />
+    <Compile Include="AddOns\MechJeb2\OrbitExtensions.cs" />
+    <Compile Include="AddOns\MechJeb2\TypeWrapper.cs" />
     <Compile Include="AddOns\RemoteTech\IRemoteTechAPIv1.cs" />
     <Compile Include="AddOns\RemoteTech\RemoteTechAPI.cs" />
     <Compile Include="AddOns\RemoteTech\RemoteTechArchive.cs" />
@@ -191,7 +204,9 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <PropertyGroup>
     <PostBuildEvent Condition=" '$(OS)' == 'Unix' ">
