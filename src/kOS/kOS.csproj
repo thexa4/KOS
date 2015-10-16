@@ -191,6 +191,8 @@
     <Compile Include="AddOns\InfernalRobotics\Addon.cs" />
     <Compile Include="Screen\RectExtensions.cs" />
     <Compile Include="AddOns\RemoteTech\RemoteTechAntennaModuleFields.cs" />
+    <Compile Include="Suffixed\CrewMember.cs" />
+    <Compile Include="Suffixed\PartModuleField\ScienceExperimentFields.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\kOS.Safe\kOS.Safe.csproj">
