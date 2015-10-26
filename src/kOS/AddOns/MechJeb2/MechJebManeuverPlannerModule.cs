@@ -93,6 +93,28 @@ namespace kOS.AddOns.MechJeb2
             AddSuffix("ADVCIRCULARIZE", new TwoArgsSuffix<Node, Orbit, double>((orbit, time) => DoCircularize(time, orbit), "Calculates a circularization burn at the given time offset and orbit"));
             AddSuffix("MOONRETURN", new OneArgsSuffix<Node, double>((altitude) => DoMoonReturn(altitude), "Calculates a return burn from a moon"));
             AddSuffix("ADVMOONRETURN", new TwoArgsSuffix<Node, double, Orbit>((altitude, orbit) => DoMoonReturn(altitude, orbit), "Calculates a return burn from a moon"));
+            AddSuffix("PLANEMATCH", new OneArgsSuffix<Node, bool>((ascending) => DoPlaneMatch(ascending), "Calculates a plane match with a target"));
+        }
+
+        private Node DoPlaneMatch(bool ascending, Orbit orbit = null)
+        {
+            var time = Planetarium.GetUniversalTime();
+            if (orbit != null)
+                time = orbit.StartUT;
+
+            orbit = orbit ?? _shared.Vessel.orbit;
+
+            var operation = GetOperation("MuMech.OperationPlane");
+            if (operation == null)
+                return null;
+
+            var searchType = BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy;
+            var field = operation.Type.GetFields(searchType).Where((f) => f.Name == "timeSelector" && !f.IsStatic).FirstOrDefault();
+
+            var timeSelector = new TypeWrapper(field.GetValue(operation.Target));
+            timeSelector["currentTimeRef"] = ascending ? 0 : 1;
+            
+            return ExecuteOperation(orbit, time, operation);
         }
 
         private Node DoMoonReturn(double altitude, Orbit orbit = null)
@@ -105,10 +127,13 @@ namespace kOS.AddOns.MechJeb2
 
             var operation = GetOperation("MuMech.OperationMoonReturn");
             if (operation == null)
+            {
+                SafeHouse.Logger.LogWarning("Operation not enabled.");
                 return null;
+            }
 
             var altParam = operation["moonReturnAltitude"] as TypeWrapper;
-            altParam["var"] = altitude;
+            altParam["val"] = altitude;
 
             return ExecuteOperation(orbit, time, operation);
         }
@@ -156,8 +181,10 @@ namespace kOS.AddOns.MechJeb2
             if (targetModule == null)
                 return null;
 
-            if (_shared.Vessel.targetObject == null)
+            if (_shared.Vessel.targetObject == null) {
+                SafeHouse.Logger.Log("No target selected, aborting.");
                 return null;
+            }
             _addon.GetTarget().SetTarget(_shared.Vessel.targetObject);
 
             var run = operation["MakeNode"] as TypeWrapper.Function;
