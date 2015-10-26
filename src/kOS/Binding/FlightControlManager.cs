@@ -270,6 +270,8 @@ namespace kOS.Binding
             private object value;
             private bool enabled;
 
+            private bool isInitialized = false;
+
             public FlightCtrlParam(string name, SharedObjects sharedObjects)
             {
                 this.name = name;
@@ -285,7 +287,9 @@ namespace kOS.Binding
             private void HookEvents()
             {
                 binding.AddGetter(name, () => value);
-                binding.AddSetter(name, val => value = val);
+                binding.AddSetter(name, val => { value = val;
+                    isInitialized = true;
+                });
             }
 
 
@@ -295,6 +299,8 @@ namespace kOS.Binding
                 set
                 {
                     SafeHouse.Logger.Log(string.Format("FlightCtrlParam: Enabled: {0} {1} => {2}", name, enabled, value));
+                    if (value && this.value == null)
+                        isInitialized = false;
 
                     enabled = value;
                     if (RemoteTechHook.IsAvailable(control.Vessel.id))
@@ -379,6 +385,10 @@ namespace kOS.Binding
                 }
                 catch (InvalidCastException e) // Note, very few types actually fail Convert.ToDouble(), so it's hard to get this to occur.
                 {
+                    // Only unlock when the value has been set at least once
+                    if (!isInitialized)
+                        return;
+
                     // perform the "unlock" so this message won't spew every FixedUpdate:
                     Enabled = false;
                     ClearValue();
@@ -420,6 +430,7 @@ namespace kOS.Binding
                 else if (value is Vector)
                 {
                     SteeringHelper.SteerShipToward(((Vector)value).ToDirection(), c, control.Vessel);
+
                 }
                 else if (value is Node)
                 {
@@ -427,11 +438,20 @@ namespace kOS.Binding
                 }
                 else
                 {
+                    // Only unlock when the value has been set at least once
+                    if (!isInitialized)
+                        return;
+
                     // perform the "unlock" so this message won't spew every FixedUpdate:
+                    SafeHouse.Logger.Log("setfalse");
                     Enabled = false;
+                    var type = "null";
+                    if (value != null)
+                        type = value.GetType().Name;
                     ClearValue();
                     throw new KOSWrongControlValueTypeException(
-                        "STEERING", value.GetType().Name, "Direction, Vector, Manuever Node, or special string \"KILL\"");
+                        "STEERING", type, "Direction, Vector, Manuever Node, or special string \"KILL\"");
+
                 }
             }
 
