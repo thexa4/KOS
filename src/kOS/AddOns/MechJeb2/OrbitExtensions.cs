@@ -15,7 +15,7 @@ namespace kOS.AddOns.MechJeb2
         //can probably be replaced with Vector3d.xzy?
         public static Vector3d SwapYZ(Vector3d v)
         {
-            return SteeringHelper.SwapYZ(v);
+            return v.xzy;
         }
 
         //

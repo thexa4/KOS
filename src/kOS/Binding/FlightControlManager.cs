@@ -88,7 +88,7 @@ namespace kOS.Binding
 
             // If it gets this far, that means the part the kOSProcessor module is inside of
             // got disconnected from its original vessel and became a member
-            // of a new child vessel, either do to undocking, decoupling, or breakage.
+            // of a new child vessel, either due to undocking, decoupling, or breakage.
 
             // currentVessel is now a stale reference to the vessel this manager used to be a member of,
             // while Shared.Vessel is the new vessel it is now contained in.
@@ -172,6 +172,7 @@ namespace kOS.Binding
 
             UnBind();
             flightControls.Remove(currentVessel.rootPart.flightID);
+            SteeringManagerProvider.RemoveInstance(currentVessel);
         }
 
         private bool VesselIsValid(Vessel vessel)
@@ -256,7 +257,7 @@ namespace kOS.Binding
                         break;
                     default:
                         // If the mode is not recognised, thrown an exception rather than continuing or using a default setting
-                        throw new Safe.Exceptions.KOSException(
+                        throw new KOSException(
                             string.Format("kOS does not recognize the SAS mode setting of {0}", autopilotMode));
                 }
             }
@@ -269,17 +270,25 @@ namespace kOS.Binding
             private readonly BindingManager binding;
             private object value;
             private bool enabled;
+            private readonly SharedObjects shared;
+            private SteeringManager steeringManager;
 
             private bool isInitialized = false;
 
             public FlightCtrlParam(string name, SharedObjects sharedObjects)
             {
                 this.name = name;
+                shared = sharedObjects;
                 control = GetControllerByVessel(sharedObjects.Vessel);
                 
                 binding = sharedObjects.BindingMgr;
                 Enabled = false;
                 value = null;
+
+                if (string.Equals(name, "steering", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    steeringManager = SteeringManagerProvider.GetInstance(sharedObjects);
+                }
 
                 HookEvents();
             }
@@ -303,6 +312,12 @@ namespace kOS.Binding
                         isInitialized = false;
 
                     enabled = value;
+                    if (steeringManager != null)
+                    {
+                        if (enabled) steeringManager.EnableControl(shared);
+                        else steeringManager.DisableControl();
+                        //steeringManager.Enabled = enabled;
+                    }
                     if (RemoteTechHook.IsAvailable(control.Vessel.id))
                     {
                         HandleRemoteTechPilot();
@@ -383,11 +398,14 @@ namespace kOS.Binding
                     if (!double.IsNaN(doubleValue))
                         c.mainThrottle = (float)Safe.Utilities.Math.Clamp(doubleValue, 0, 1);
                 }
-                catch (InvalidCastException e) // Note, very few types actually fail Convert.ToDouble(), so it's hard to get this to occur.
+                catch (InvalidCastException) // Note, very few types actually fail Convert.ToDouble(), so it's hard to get this to occur.
                 {
                     // Only unlock when the value has been set at least once
                     if (!isInitialized)
+                    {
+                        SafeHouse.Logger.LogError("Unset before initialize!");
                         return;
+                    }
 
                     // perform the "unlock" so this message won't spew every FixedUpdate:
                     Enabled = false;
@@ -406,7 +424,7 @@ namespace kOS.Binding
                     if (!double.IsNaN(doubleValue))
                         c.wheelThrottle = (float)Safe.Utilities.Math.Clamp(doubleValue, -1, 1);
                 }
-                catch (InvalidCastException e) // Note, very few types actually fail Convert.ToDouble(), so it's hard to get this to occur.
+                catch (InvalidCastException) // Note, very few types actually fail Convert.ToDouble(), so it's hard to get this to occur.
                 {
                     // perform the "unlock" so this message won't spew every FixedUpdate:
                     Enabled = false;
@@ -419,39 +437,15 @@ namespace kOS.Binding
             private void SteerByWire(FlightCtrlState c)
             {
                 if (!Enabled) return;
-                if (value is string && ((string)value).ToUpper() == "KILL")
+                if (steeringManager.Enabled)
                 {
-                    SteeringHelper.KillRotation(c, control.Vessel);
-                }
-                else if (value is Direction)
-                {
-                    SteeringHelper.SteerShipToward((Direction)value, c, control.Vessel);
-                }
-                else if (value is Vector)
-                {
-                    SteeringHelper.SteerShipToward(((Vector)value).ToDirection(), c, control.Vessel);
-
-                }
-                else if (value is Node)
-                {
-                    SteeringHelper.SteerShipToward(((Node)value).GetBurnVector().ToDirection(), c, control.Vessel);
+                    steeringManager.Value = value;
+                    steeringManager.OnFlyByWire(c);
                 }
                 else
                 {
-                    // Only unlock when the value has been set at least once
-                    if (!isInitialized)
-                        return;
-
-                    // perform the "unlock" so this message won't spew every FixedUpdate:
-                    SafeHouse.Logger.Log("setfalse");
                     Enabled = false;
-                    var type = "null";
-                    if (value != null)
-                        type = value.GetType().Name;
                     ClearValue();
-                    throw new KOSWrongControlValueTypeException(
-                        "STEERING", type, "Direction, Vector, Manuever Node, or special string \"KILL\"");
-
                 }
             }
 
@@ -482,7 +476,7 @@ namespace kOS.Binding
                                 bearing -= 360; // i.e. 359 degrees to the right is really 1 degree to the left
                         }
                     }
-                    catch (InvalidCastException e) // Note, very few types actually fail Convert.ToDouble(), so it's hard to get this to occur.
+                    catch (InvalidCastException) // Note, very few types actually fail Convert.ToDouble(), so it's hard to get this to occur.
                     {
                         // perform the "unlock" so this message won't spew every FixedUpdate:
                         Enabled = false;
@@ -507,11 +501,21 @@ namespace kOS.Binding
             public void Dispose()
             {
                 Enabled = false;
+                if (steeringManager != null)
+                {
+                    SteeringManagerProvider.RemoveInstance(shared.Vessel);
+                    steeringManager = null;
+                }
             }
 
             public void UpdateFlightControl(Vessel vessel)
             {
                 control = GetControllerByVessel(vessel);
+                if (steeringManager != null)
+                {
+                    steeringManager = SteeringManagerProvider.SwapInstance(shared, steeringManager);
+                    steeringManager.Update(vessel);
+                }
             }
             
             public override string ToString() // added to aid in debugging.
