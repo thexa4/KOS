@@ -1,16 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using kOS.Safe.Compilation.KS;
 using kOS.Safe.Encapsulation;
 using kOS.Safe.Encapsulation.Suffixes;
 using kOS.Safe.Exceptions;
+using kOS.Safe.Utilities;
 
 namespace kOS.Suffixed
 {
     public class KUniverseValue : Structure
     {
-        private SharedObjects shared;
+        private readonly SharedObjects shared;
         
         public KUniverseValue(SharedObjects shared)
         {
@@ -30,6 +28,8 @@ namespace kOS.Suffixed
             AddSuffix("DEFAULTLOADDISTANCE", new Suffix<LoadDistanceValue>(() => new LoadDistanceValue(PhysicsGlobals.Instance.VesselRangesDefault)));
             AddSuffix("ACTIVEVESSEL", new SetSuffix<VesselTarget>(() => new VesselTarget(FlightGlobals.ActiveVessel, shared), SetActiveVessel));
             AddSuffix("FORCESETACTIVEVESSEL", new OneArgsSuffix<VesselTarget>(ForceSetActiveVessel));
+            AddSuffix("HOURSPERDAY", new Suffix<int>(GetHoursPerDay));
+            AddSuffix("DEBUGLOG", new OneArgsSuffix<string>(DebugLog));
         }
 
         public void RevertToLaunch()
@@ -38,7 +38,7 @@ namespace kOS.Suffixed
             {
                 FlightDriver.RevertToLaunch();
             }
-            else throw new KOSCommandInvalidHereException("REVERTTOLAUNCH", "When revert is disabled", "When revert is enabled");
+            else throw new KOSCommandInvalidHereException(LineCol.Unknown(), "REVERTTOLAUNCH", "When revert is disabled", "When revert is enabled");
         }
 
         public void RevertToEditor()
@@ -48,7 +48,7 @@ namespace kOS.Suffixed
                 EditorFacility fac = ShipConstruction.ShipType;
                 FlightDriver.RevertToPrelaunch(fac);
             }
-            else throw new KOSCommandInvalidHereException("REVERTTOEDITOR", "When revert is disabled", "When revert is enabled");
+            else throw new KOSCommandInvalidHereException(LineCol.Unknown(), "REVERTTOEDITOR", "When revert is disabled", "When revert is enabled");
         }
 
         public void RevertTo(string editor)
@@ -70,7 +70,7 @@ namespace kOS.Suffixed
                 }
                 FlightDriver.RevertToPrelaunch(fac);
             }
-            else throw new KOSCommandInvalidHereException("REVERTTO", "When revert is disabled", "When revert is enabled");
+            else throw new KOSCommandInvalidHereException(LineCol.Unknown(), "REVERTTO", "When revert is disabled", "When revert is enabled");
         }
 
         public bool CanRevert()
@@ -116,6 +116,16 @@ namespace kOS.Suffixed
             {
                 FlightGlobals.ForceSetActiveVessel(vessel);
             }
+        }
+        
+        public int GetHoursPerDay()
+        {
+            return GameSettings.KERBIN_TIME ? TimeSpan.HOURS_IN_KERBIN_DAY : TimeSpan.HOURS_IN_EARTH_DAY;
+        }
+        
+        public void DebugLog(string message)
+        {
+            SafeHouse.Logger.Log("(KUNIVERSE:DEBUGLOG) " + message);
         }
     }
 }

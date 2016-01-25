@@ -1,7 +1,7 @@
 .. _string:
 
 String
-====
+======
 
 A :struct:`String` is an immutable sequence of characters in kOS.
 
@@ -22,8 +22,24 @@ of existing strings. For example::
     SET s TO "Hello, Strings!".
     SET t TO s:REPLACE("Hello", "Goodbye").
 
+Strings are iterable. This scripts prints the string's characters one per line::
 
-**NOTE: All string operations are currently case insensive, there are future plans to add mechanisms that will let you choose which style you perfer**	
+  SET str TO "abcde".
+
+  FOR c IN str {
+    PRINT c.
+  }
+
+
+
+CASE SENSITIVIY
+~~~~~~~~~~~~~~~
+
+NOTE: All string comparisons, substring matches, and searches, are
+currently case **in** sensive, meaning that for example the letter
+"A" and the letter "a" are indistinguishable.  There are future
+plans to add mechanisms that will let you choose case-sensitivity
+when you prefer.
 	
 Structure
 ---------
@@ -263,7 +279,7 @@ Structure
 
     
 Access to Individual Characters
------------------------------
+-------------------------------
 
 All string indexes start counting at zero. (The characters are numbered from 0 to N-1 rather than from 1 to N.)
 
