@@ -164,6 +164,8 @@
     <Compile Include="Sound\TriangleSoundWave.cs" />
     <Compile Include="Sound\Voice.cs" />
     <Compile Include="Sound\VoiceValue.cs" />
+    <Compile Include="Suffixed\AttitudeController.cs" />
+    <Compile Include="Suffixed\AttitudeCorrectionResult.cs" />
     <Compile Include="Suffixed\BoundsValue.cs" />
     <Compile Include="Suffixed\ConsumedResourceValue.cs" />
     <Compile Include="Suffixed\ConsumedResourceValueRCS.cs" />
@@ -173,6 +175,7 @@
     <Compile Include="Suffixed\LoadDistanceValue.cs" />
     <Compile Include="Suffixed\Part\DecouplerValue.cs" />
     <Compile Include="Suffixed\Part\LaunchClampValue.cs" />
+    <Compile Include="Suffixed\Part\ReactionWheelValue.cs" />
     <Compile Include="Suffixed\Part\RCSValue.cs" />
     <Compile Include="Suffixed\ResourceTransferValue.cs" />
     <Compile Include="Screen\DelegateDialog.cs" />
