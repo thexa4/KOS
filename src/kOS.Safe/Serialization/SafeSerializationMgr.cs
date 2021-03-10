@@ -36,16 +36,25 @@ namespace kOS.Safe.Serialization
             return serialized is PrimitiveStructure;
         }
 
-        private object DumpValue(object value, bool includeType)
+        private object DumpValue(object value, bool includeType, bool allowTruncatedRecursion, List<object> seenList)
         {
             var valueDumper = value as IDumper;
 
+            if (seenList.Contains(value))
+            {
+                if (!allowTruncatedRecursion)
+                    throw new KOSSerializationException("Trying to serialize a structure that loops on itself. Only Directed Acyclical Graphs are supported.");
+                return "...recurse...";
+            }
+
             if (valueDumper != null) {
-                return Dump(valueDumper, includeType);
+                return Dump(valueDumper, includeType, allowTruncatedRecursion, seenList);
             } else if (value is Dump) {
                 return value;
             } else if (value is List<object>) {
-                return (value as List<object>).Select((v) => DumpValue(v, includeType)).ToList();
+                var nextSeenList = new List<object>(seenList);
+                nextSeenList.Add(value);
+                return (value as List<object>).Select((v) => DumpValue(v, includeType, allowTruncatedRecursion, nextSeenList)).ToList();
             } else if (IsSerializablePrimitive(value)) {
                 return Structure.ToPrimitive(value);
             } else {
@@ -53,15 +62,23 @@ namespace kOS.Safe.Serialization
             }
         }
 
-        public Dump Dump(IDumper dumper, bool includeType = true)
+        public Dump Dump(IDumper dumper, bool includeType = true, bool allowTruncatedRecursion = false, List<object> seenList = null)
         {
+            // We want to allow DAG-like structure serialization (so nodes can occur in the output more than once.
+            // Cyclical graphs crash us with a stackoverflow however. To protect from this we check wether we're already
+            // in the list of objects that are between us and the root.
+            if (seenList == null)
+                seenList = new List<object>();
+            seenList = new List<object>(seenList);
+            seenList.Add(dumper);
+
             var dump = dumper.Dump();
 
             List<object> keys = new List<object>(dump.Keys);
 
             foreach (object key in keys)
             {
-                dump[key] = DumpValue(dump[key], includeType);
+                dump[key] = DumpValue(dump[key], includeType, allowTruncatedRecursion, seenList);
             }
 
             if (includeType)
@@ -72,9 +89,9 @@ namespace kOS.Safe.Serialization
             return dump;
         }
 
-        public string Serialize(IDumper serialized, IFormatWriter formatter, bool includeType = true)
+        public string Serialize(IDumper serialized, IFormatWriter formatter, bool includeType = true, bool allowTruncatedRecursion = false)
         {
-            return formatter.Write(Dump(serialized, includeType));
+            return formatter.Write(Dump(serialized, includeType, allowTruncatedRecursion));
         }
 
         public object CreateValue(object value)
@@ -221,7 +238,7 @@ namespace kOS.Safe.Serialization
 
         public string ToString(IDumper dumper)
         {
-            return Serialize(dumper, TerminalFormatter.Instance, false);
+            return Serialize(dumper, TerminalFormatter.Instance, false, true);
         }
     }
 }
