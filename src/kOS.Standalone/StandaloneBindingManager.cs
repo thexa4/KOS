@@ -32,11 +32,8 @@ namespace kOS.Standalone
             this.shared.BindingMgr = this;
         }
 
-        public void Load()
+        public void Load(string[] contexts)
         {
-            var contexts = new string[1];
-            contexts[0] = "ksp";
-
             bindings.Clear();
             variables.Clear();
 
