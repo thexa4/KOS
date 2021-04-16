@@ -9,9 +9,13 @@ namespace kOS.Binding
     [Binding("ksp")]
     public class PolyfillBindings : SafeBindingBase
     {
+        private TerminalStruct terminal;
+
         public override void AddTo(SafeSharedObjects shared)
         {
-            shared.BindingMgr.AddGetter("TERMINAL", delegate { return new TerminalStruct(shared); });
+            terminal = new TerminalStruct(shared);
+
+            shared.BindingMgr.AddGetter("TERMINAL", delegate { return terminal; });
             if (shared is StandaloneSharedObjects)
             {
                 shared.BindingMgr.AddGetter("TIME", delegate { return new TimePolyfill(((StandaloneSharedObjects)shared).StartTime); });

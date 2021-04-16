@@ -61,6 +61,17 @@ namespace kOS.Standalone
                             special = false;
                             break;
                         }
+                        switch (key.Key) {
+                        case ConsoleKey.PageUp:
+                            special = true;
+                            mapped = (char)UnicodeCommand.PAGEUPCURSOR;
+                            break;
+                        case ConsoleKey.PageDown:
+                            special = true;
+                            mapped = (char)UnicodeCommand.PAGEDOWNCURSOR;
+                            break;
+                        }
+
                         if (special) {
                             shared.Interpreter.SpecialKey(mapped);
                         } else if (shared.Interpreter.IsWaitingForCommand()) {
