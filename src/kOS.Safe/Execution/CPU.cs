@@ -507,7 +507,8 @@ namespace kOS.Safe.Execution
                 {
                     PopFirstContext();
                     shared.Screen.Print("Program aborted.");
-                    shared.SoundMaker.StopAllVoices(); // stop voices if execution was manually broken, but not if the program ends normally
+                    if (shared.SoundMaker != null)
+                        shared.SoundMaker.StopAllVoices(); // stop voices if execution was manually broken, but not if the program ends normally
                     PrintStatistics();
                     stack.Clear();
                 }
