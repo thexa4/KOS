@@ -1,25 +1,24 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
-using kOS.Execution;
-using kOS.Safe.Compilation;
-using kOS.Safe.Execution;
 using kOS.Safe.Screen;
+using kOS.Safe.Execution;
 using kOS.Safe.UserIO;
-using kOS.Safe.Persistence;
+using kOS.Safe.Compilation;
 
-namespace kOS.Screen
+namespace kOS.Standalone
 {
-    public class Interpreter : TextEditor, IInterpreter
+    class StandaloneInterpreter : TextEditor, IInterpreter
     {
-        public const string InterpreterName = "interpreter";
+        public const string InterpreterName = "standalone";
         private readonly List<string> commandHistory = new List<string>();
         private int commandHistoryIndex;
         private bool locked;
 
-        protected SharedObjects Shared { get; private set; }
 
-        public Interpreter(SharedObjects shared)
+        protected StandaloneSharedObjects Shared { get; private set; }
+
+        public StandaloneInterpreter(StandaloneSharedObjects shared)
         {
             Shared = shared;
         }
@@ -37,14 +36,14 @@ namespace kOS.Screen
                 ProcessCommand(commandText);
                 int numRows = LineSubBuffer.RowCount;
                 LineSubBuffer.Wipe();
-                LineSubBuffer.SetSize(numRows,ColumnCount); // refill it to its previous size
+                LineSubBuffer.SetSize(numRows, ColumnCount); // refill it to its previous size
             }
             else
             {
                 InsertChar('\n');
             }
         }
-        
+
         /// <summary>
         /// Detect if the interpreter happens to be right at the start of a new command line.
         /// </summary>
@@ -116,10 +115,10 @@ namespace kOS.Screen
                 }
             }
         }
-        
+
         public string GetCommandHistoryAbsolute(int absoluteIndex)
         {
-            return commandHistory[absoluteIndex-1];
+            return commandHistory[absoluteIndex - 1];
         }
 
         protected virtual void ProcessCommand(string commandText)
@@ -168,7 +167,6 @@ namespace kOS.Screen
         public void SetInputLock(bool isLocked)
         {
             locked = isLocked;
-            if (Shared.Window != null) Shared.Window.ShowCursor = !isLocked;
             LineSubBuffer.Enabled = !isLocked;
         }
 
@@ -177,7 +175,6 @@ namespace kOS.Screen
             Shared.ScriptHandler.ClearContext(InterpreterName);
             commandHistory.Clear();
             commandHistoryIndex = 0;
-            base.Reset();
         }
 
         public override void PrintAt(string textToPrint, int row, int column)
@@ -189,9 +186,9 @@ namespace kOS.Screen
 
         private class InterpreterPath : InternalPath
         {
-            private Interpreter interpreter;
+            private StandaloneInterpreter interpreter;
 
-            public InterpreterPath(Interpreter interpreter) : base()
+            public InterpreterPath(StandaloneInterpreter interpreter) : base()
             {
                 this.interpreter = interpreter;
             }

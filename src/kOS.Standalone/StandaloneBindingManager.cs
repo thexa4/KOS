@@ -1,15 +1,16 @@
-using kOS.Safe.Binding;
-using kOS.Safe.Utilities;
 using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Linq;
+using kOS.Safe.Binding;
+using kOS.Safe.Utilities;
 
-namespace kOS.Binding
+namespace kOS.Standalone
 {
     [AssemblyWalk(AttributeType = typeof(BindingAttribute), InherritedType = typeof(SafeBindingBase), StaticRegisterMethod = "RegisterMethod")]
-    public class BindingManager : IBindingManager
+    class StandaloneBindingManager : IBindingManager
     {
-        private readonly SharedObjects shared;
+        private readonly StandaloneSharedObjects shared;
         private readonly List<kOS.Safe.Binding.SafeBindingBase> bindings = new List<kOS.Safe.Binding.SafeBindingBase>();
         private readonly Dictionary<string, BoundVariable> variables;
 
@@ -24,9 +25,7 @@ namespace kOS.Binding
         // refusing to be stored in the dictionary.
         private static readonly HashSet<KeyValuePair<BindingAttribute, Type>> rawAttributes = new HashSet<KeyValuePair<BindingAttribute, Type>>();
 
-        private FlightControlManager flightControl;
-
-        public BindingManager(SharedObjects shared)
+        public StandaloneBindingManager(StandaloneSharedObjects shared)
         {
             variables = new Dictionary<string, BoundVariable>(StringComparer.OrdinalIgnoreCase);
             this.shared = shared;
@@ -40,7 +39,6 @@ namespace kOS.Binding
 
             bindings.Clear();
             variables.Clear();
-            flightControl = null;
 
             foreach (KeyValuePair<BindingAttribute, Type> attrTypePair in rawAttributes)
             {
@@ -49,12 +47,6 @@ namespace kOS.Binding
                 var instanceWithABinding = (SafeBindingBase)Activator.CreateInstance(type);
                 instanceWithABinding.AddTo(shared);
                 bindings.Add(instanceWithABinding);
-
-                var manager = instanceWithABinding as FlightControlManager;
-                if (manager != null)
-                {
-                    flightControl = manager;
-                }
             }
         }
 
@@ -116,7 +108,7 @@ namespace kOS.Binding
                 AddBoundVariable(name, null, dlg);
             }
         }
-        
+
         public bool HasGetter(string name)
         {
             return variables.ContainsKey(name);
@@ -148,20 +140,8 @@ namespace kOS.Binding
         {
         }
 
-        public void ToggleFlyByWire(string paramName, bool enabled)
-        {
-            if (flightControl != null)
-            {
-                flightControl.ToggleFlyByWire(paramName, enabled);
-            }
-        }
+        public void ToggleFlyByWire(string paramName, bool enabled) { }
 
-        public void SelectAutopilotMode(string autopilotMode)
-        {
-            if (flightControl != null)
-            {
-                flightControl.SelectAutopilotMode(autopilotMode);
-            }
-        }
+        public void SelectAutopilotMode(string autopilotMode) { }
     }
 }
